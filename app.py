@@ -112,12 +112,12 @@ def get_recommendations(track_id, limit=5):
 def get_lyrics(title, artist):
     genius = get_genius()
     if not genius:
-        return None
+        return "ERRO: Genius nao inicializado - token ausente"
     try:
         song = genius.search_song(title, artist)
-        return song.lyrics[:3000] if song else None
-    except Exception:
-        return None
+        return song.lyrics[:3000] if song else "ERRO: Musica nao encontrada no Genius"
+    except Exception as e:
+        return f"ERRO: {str(e)}"
 
 def classify_vibe(features):
     energy  = features.get("energy", 0)
@@ -289,9 +289,11 @@ def main():
             st.markdown("---")
             with st.spinner("Buscando letra..."):
                 lyrics = get_lyrics(track["name"], track["artists"][0]["name"])
-            if lyrics:
+            if lyrics and not lyrics.startswith("ERRO"):
                 with st.expander("📝 Ver letra"):
                     st.text(lyrics[:1500])
+            elif lyrics and lyrics.startswith("ERRO"):
+                st.error(lyrics)
             else:
                 st.info("Letra nao encontrada.")
 
