@@ -1,7 +1,7 @@
 import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-import lyricsgenius
+import requests as req
 import plotly.graph_objects as go
 import pandas as pd
 import os
@@ -56,12 +56,7 @@ def get_spotify():
         client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
     ))
 
-@st.cache_resource
-def get_genius():
-    token = os.getenv("GENIUS_ACCESS_TOKEN")
-    if not token:
-        return None
-    return lyricsgenius.Genius(token)
+
 
 
 @st.cache_data(ttl=3600)
@@ -110,14 +105,14 @@ def get_recommendations(track_id, limit=5):
 
 @st.cache_data(ttl=3600)
 def get_lyrics(title, artist):
-    genius = get_genius()
-    if not genius:
-        return "ERRO: Genius nao inicializado - token ausente"
     try:
-        song = genius.search_song(title, artist)
-        return song.lyrics[:3000] if song else "ERRO: Musica nao encontrada no Genius"
-    except Exception as e:
-        return f"ERRO: {str(e)}"
+        url = f"https://api.lyrics.ovh/v1/{artist}/{title}"
+        r = req.get(url, timeout=10)
+        if r.status_code == 200:
+            return r.json().get("lyrics", None)
+        return None
+    except Exception:
+        return None
 
 def classify_vibe(features):
     energy  = features.get("energy", 0)
@@ -289,11 +284,9 @@ def main():
             st.markdown("---")
             with st.spinner("Buscando letra..."):
                 lyrics = get_lyrics(track["name"], track["artists"][0]["name"])
-            if lyrics and not lyrics.startswith("ERRO"):
+            if lyrics:
                 with st.expander("📝 Ver letra"):
                     st.text(lyrics[:1500])
-            elif lyrics and lyrics.startswith("ERRO"):
-                st.error(lyrics)
             else:
                 st.info("Letra nao encontrada.")
 
